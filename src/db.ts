@@ -27,6 +27,8 @@ export function createDatabase(dataDir: string) {
 
     const joins = patch.joins !== undefined ? patch.joins : (current ? current.joins : 0);
     const leaves = patch.leaves !== undefined ? patch.leaves : (current ? current.leaves : 0);
+    const auth = patch.auth !== undefined ? patch.auth : (current ? current.auth : null);
+    const conn = patch.conn !== undefined ? patch.conn : (current ? current.conn : null);
 
     await prisma.player.upsert({
       where: { player_id: player.id },
@@ -36,6 +38,8 @@ export function createDatabase(dataDir: string) {
         leaves,
         last_team: patch.lastTeam || (current ? current.last_team : "spec"),
         last_seen_at: patch.lastSeenAt || new Date().toISOString(),
+        auth,
+        conn,
       },
       create: {
         player_id: player.id,
@@ -44,6 +48,8 @@ export function createDatabase(dataDir: string) {
         leaves,
         last_team: patch.lastTeam || "spec",
         last_seen_at: patch.lastSeenAt || new Date().toISOString(),
+        auth,
+        conn,
       },
     });
   }

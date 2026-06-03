@@ -24,6 +24,8 @@ model Player {
   leaves       Int      @default(0)
   last_team    String   @default("spec")
   last_seen_at String?
+  auth         String?
+  conn         String?
 
   @@map("players")
 }

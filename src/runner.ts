@@ -97,21 +97,39 @@ async function main() {
   room.onPlayerJoin = (player: any) => {
     emit({
       type: "player_join",
-      player: { id: player.id, name: player.name, team: teamName(player.team) },
+      player: { 
+        id: player.id, 
+        name: player.name, 
+        team: teamName(player.team),
+        admin: player.admin,
+        auth: player.auth,
+        conn: player.conn
+      },
     });
   };
 
   room.onPlayerLeave = (player: any) => {
     emit({
       type: "player_leave",
-      player: { id: player.id, name: player.name, team: teamName(player.team) },
+      player: { 
+        id: player.id, 
+        name: player.name, 
+        team: teamName(player.team),
+        admin: player.admin,
+        position: player.position
+      },
     });
   };
 
   room.onPlayerTeamChange = (changedPlayer: any, byPlayer: any) => {
     emit({
       type: "team_change",
-      player: { id: changedPlayer.id, name: changedPlayer.name, team: teamName(changedPlayer.team) },
+      player: { 
+        id: changedPlayer.id, 
+        name: changedPlayer.name, 
+        team: teamName(changedPlayer.team),
+        admin: changedPlayer.admin 
+      },
       team: changedPlayer.team,
       byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
     });
@@ -122,12 +140,20 @@ async function main() {
       id: p.id,
       name: p.name,
       team: teamName(p.team),
+      admin: p.admin,
+      position: p.position
     }));
+
+    const scores = room.getScores();
 
     emit({
       type: "game_start",
       byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
       players,
+      scores: scores ? {
+        scoreLimit: scores.scoreLimit,
+        timeLimit: scores.timeLimit
+      } : null
     });
   };
 
@@ -152,8 +178,94 @@ async function main() {
     });
   };
 
+  room.onPlayerChat = (player: any, message: string) => {
+    emit({
+      type: "player_chat",
+      player: { id: player.id, name: player.name, team: teamName(player.team) },
+      message,
+    });
+    return true; // Return true to allow chat message
+  };
+
+  room.onPlayerBallKick = (player: any) => {
+    emit({
+      type: "player_ball_kick",
+      player: { id: player.id, name: player.name, team: teamName(player.team) },
+    });
+  };
+
+  room.onPlayerAdminChange = (changedPlayer: any, byPlayer: any) => {
+    emit({
+      type: "player_admin_change",
+      player: { id: changedPlayer.id, name: changedPlayer.name, admin: changedPlayer.admin },
+      byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
+    });
+  };
+
+  room.onPlayerKicked = (kickedPlayer: any, reason: string, ban: boolean, byPlayer: any) => {
+    emit({
+      type: "player_kicked",
+      player: { id: kickedPlayer.id, name: kickedPlayer.name },
+      reason,
+      ban,
+      byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
+    });
+  };
+
+  room.onGamePause = (byPlayer: any) => {
+    emit({
+      type: "game_pause",
+      byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
+    });
+  };
+
+  room.onGameUnpause = (byPlayer: any) => {
+    emit({
+      type: "game_unpause",
+      byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
+    });
+  };
+
+  room.onPositionsReset = () => {
+    emit({ type: "positions_reset" });
+  };
+
+  room.onPlayerActivity = (player: any) => {
+    emit({
+      type: "player_activity",
+      player: { id: player.id, name: player.name },
+    });
+  };
+
+  room.onStadiumChange = (newStadiumName: string, byPlayer: any) => {
+    emit({
+      type: "stadium_change",
+      newStadiumName,
+      byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
+    });
+  };
+
+  room.onKickRateLimitSet = (min: number, rate: number, burst: number, byPlayer: any) => {
+    emit({
+      type: "kick_rate_limit_set",
+      min,
+      rate,
+      burst,
+      byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
+    });
+  };
+
+  room.onTeamsLockChange = (locked: boolean, byPlayer: any) => {
+    emit({
+      type: "teams_lock_change",
+      locked,
+      byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
+    });
+  };
+
   room.onRoomLink = (link: string) => {
     console.log("Room link:", link);
+    emit({ type: "room_link", link });
   };
 
   console.log("Host iniciado. Presiona Ctrl+C para detener.");

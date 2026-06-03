@@ -14,7 +14,7 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
     });
   }
 
-  async function upsertJoinLeave(player: any, field: string, at: string) {
+  async function upsertJoinLeave(player: any, field: string, at: string, auth?: string, conn?: string) {
     const current = await prisma.player.findUnique({
       where: { player_id: player.id },
     });
@@ -27,6 +27,8 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
       leaves,
       lastSeenAt: at,
       lastTeam: normalizeTeam(player.team),
+      auth: auth !== undefined ? auth : current?.auth,
+      conn: conn !== undefined ? conn : current?.conn,
     });
   }
 
@@ -34,7 +36,7 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
     await saveRawEvent(event);
 
     if (event.type === "player_join") {
-      await upsertJoinLeave(event.player, "joins", event.at);
+      await upsertJoinLeave(event.player, "joins", event.at, event.player.auth, event.player.conn);
     }
 
     if (event.type === "player_leave") {
@@ -70,8 +72,8 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
           red_score: 0,
           blue_score: 0,
           time_seconds: null,
-          score_limit: null,
-          time_limit: null,
+          score_limit: event.scores ? event.scores.scoreLimit : null,
+          time_limit: event.scores ? event.scores.timeLimit : null,
           players_at_start_json: JSON.stringify(event.players || []),
         },
       });
