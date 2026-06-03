@@ -1,28 +1,30 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 import path from "path";
 import { createDatabase } from "./db";
 import { createApiServer } from "./api";
 import { loadPlugins } from "./plugin-manager";
+import { config } from "./config";
+import { logger } from "./lib/logger";
 
-const dataDir = path.join(process.cwd(), "data");
-const pluginsDir = path.join(process.cwd(), "plugins");
-
-const dbLayer = createDatabase(dataDir);
-
-const app = createApiServer({
-  prisma: dbLayer.prisma,
-  pluginManager: loadPlugins({
-    pluginsDir,
+async function main() {
+  const dbLayer = await createDatabase(path.resolve(__dirname, "../data"));
+  
+  const pluginManager = loadPlugins({
+    pluginsDir: config.paths.plugins,
     db: dbLayer.prisma,
-    logger: console,
-  }),
-});
+    logger,
+  });
 
-const port = Number(process.env.API_PORT || "3000");
+  const app = createApiServer({
+    prisma: dbLayer.prisma,
+    pluginManager,
+  });
 
-app.listen(port, () => {
-  console.log(`API lista en http://localhost:${port}`);
-  console.log(`SQLite: ${dbLayer.dbPath}`);
+  app.listen(config.api.port, () => {
+    logger.info(`API lista en http://localhost:${config.api.port}`);
+    logger.info(`SQLite: ${dbLayer.dbPath}`);
+  });
+}
+
+main().catch(err => {
+  logger.error("Error iniciando API:", err);
 });

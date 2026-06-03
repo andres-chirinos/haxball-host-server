@@ -11,7 +11,7 @@ examplePlugin.api((app: any) => {
 });
 
 examplePlugin.on("team_victory", (event) => {
-  console.log("[example-plugin] Partido finalizado", event.score);
+  examplePlugin.logger.info("Partido finalizado", event.score);
 });
 
 examplePlugin.command(["help", "ayuda"], { hideTrigger: false }, ({ reply }) => {
@@ -29,7 +29,7 @@ examplePlugin.command("rank", { hideTrigger: false }, async ({ player, replyPriv
     });
     replyPrivate(`Tus stats: ${stats?.joins || 0} ingresos, ${stats?.leaves || 0} salidas.`);
   } catch (e) {
-    console.error(e);
+    examplePlugin.logger.error("Error obteniendo stats:", e);
     replyPrivate("Hubo un error obteniendo tus stats.");
   }
 });

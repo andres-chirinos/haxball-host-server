@@ -1,53 +1,50 @@
 # Haxball Headless Host Persistente
 
-Este proyecto levanta una sala de Haxball Headless Host y guarda informacion en SQLite usando solo Node.js:
-- jugadores que entran/salen
-- cambios de equipo
-- goles
-- inicio/fin de partido
-- resultado final
+Una infraestructura avanzada, modular y robusta para alojar salas de **HaxBall Headless Host** usando **TypeScript**, **Prisma (SQLite)** y **Node.js**. Diseñada para servidores persistentes, con un framework de plugins al estilo `discord.py` y autenticación offline.
 
-Ademas expone una API HTTP y permite extender comportamiento con plugins.
+## Características Principales
+- **Persistencia Real**: Guarda estadísticas de jugadores, resultados, goles y eventos en SQLite. Ahora rastrea e identifica jugadores por nombre o por su firma (`auth`), en vez de usar IDs volátiles.
+- **Framework de Plugins**: Construye bots complejos, comandos y reglas muy fácilmente exportando una instancia de `Plugin`.
+- **Comandos de Chat Avanzados**: Todos los comandos usan `!`. Los plugins pueden definir comandos invisibles (ej. `!login`) para que la contraseña nunca aparezca en el chat público.
+- **Doble Modo de Autenticación**: Admite usar cuentas oficiales de Haxball, o un modo "offline" con registro de contraseñas.
+- **Sistema de Logs**: Guarda todos los eventos por fechas y en archivos separados (Core y Plugins) para auditoría.
 
-El host se inicializa con `haxball.js` (sin navegador), por lo que no depende de `window.HBInit`.
+---
 
-## Requisitos
+## 🛠️ Requisitos
 - Node.js 18+
-- Un token valido de Haxball para host headless
+- Un token válido de Haxball para el host headless
 
-## Configuracion
-1. Instala dependencias:
+## 🚀 Instalación Rápida
+
+1. Instala las dependencias:
    ```bash
    npm install
    ```
-2. Copia variables de entorno:
+2. Crea el archivo de variables de entorno:
    ```bash
    cp .env.example .env
    ```
-3. Exporta variables en tu shell (o cargalas con tu gestor favorito):
+3. Edita `.env` para añadir tu `HAXBALL_TOKEN` y opcionalmente personalizar puertos y seguridad.
+4. Genera la base de datos y tipados de Prisma:
    ```bash
-   export HAXBALL_TOKEN="TU_TOKEN"
-   export HAXBALL_ROOM_NAME="Host Persistente"
-   export API_PORT="3000"
+   npm run setup
+   ```
+5. ¡Inicia el servidor!
+   ```bash
+   npm start
    ```
 
-Variables opcionales utiles:
-- `HAXBALL_SCORE_LIMIT` (default `5`)
-- `HAXBALL_TIME_LIMIT` (default `5`)
-- `HAXBALL_TEAMS_LOCK` (`true|false`, default `false`)
-- `HAXBALL_PROXY` (proxy HTTP para crear salas adicionales)
+> Si ocurre algún error con Prisma durante el setup por versiones desactualizadas, corre `npx prisma db push --force-reset && npx prisma generate` (¡Ojo! Borrará los datos de SQLite).
 
-## Ejecutar host
-```bash
-npm run start
-```
+## 📚 Documentación
 
-Al iniciar, se crea/actualiza:
-- `data/haxball.sqlite`
+Revisa la documentación detallada para explorar cómo modificar el servidor a tu gusto:
+- **[Configuración General y Seguridad](docs/configuration.md)**
+- **[Cómo crear Plugins y Comandos](docs/plugins.md)**
 
-Tambien levanta API en `http://localhost:3000` (o el puerto de `API_PORT`).
-
-## API disponible
+## 📊 API Integrada
+El host levanta paralelamente una API REST en el puerto definido (`3000` por defecto):
 - `GET /health`
 - `GET /api/players`
 - `GET /api/events?limit=100`
@@ -55,31 +52,8 @@ Tambien levanta API en `http://localhost:3000` (o el puerto de `API_PORT`).
 - `GET /api/matches/:matchId`
 - `GET /api/stats/wins`
 
-## Analisis rapido
+## 🔍 Análisis Rápido
+Puedes verificar cuánta información hay en la base de datos ejecutando:
 ```bash
 npm run analyze
 ```
-
-## Plugins
-Los plugins viven en `plugins/*.js` y se cargan automaticamente al iniciar.
-
-Interfaz esperada del plugin:
-
-```js
-module.exports = ({ db, logger }) => ({
-   name: "mi-plugin",
-   onStart() {},
-   onStop() {},
-   onEvent(event, context) {},
-   registerApiRoutes(app) {
-      app.get("/api/plugins/mi-plugin/ping", (_req, res) => res.json({ ok: true }));
-   },
-});
-```
-
-Ejemplo real incluido:
-- `plugins/example-plugin.js`
-
-## Notas
-- Para mantener el host corriendo en un servidor remoto, deja el proceso vivo con tmux/screen/systemd.
-- Si reinicias el proceso, el historial permanece en `data/haxball.sqlite`.

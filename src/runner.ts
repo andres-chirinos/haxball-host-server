@@ -3,33 +3,25 @@ dotenv.config();
 
 import path from "path";
 import HaxballJSImport from "haxball.js";
-import { createPersistence } from "./persistence";
 import { createDatabase } from "./db";
+import { createPersistence } from "./persistence";
 import { createApiServer } from "./api";
 import { loadPlugins } from "./plugin-manager";
-
-const HaxballJS = (HaxballJSImport as any).default || HaxballJSImport;
-
-function now() {
-  return new Date().toISOString();
-}
+import { config } from "./config";
+import { logger } from "./lib/logger";
 
 async function main() {
-  const token = process.env.HAXBALL_TOKEN;
-
-  if (!token) {
-    throw new Error("Falta HAXBALL_TOKEN en variables de entorno.");
+  if (!config.security.token) {
+    logger.error("HAXBALL_TOKEN no está definido en el archivo .env");
+    process.exit(1);
   }
 
-  const dataDir = path.join(process.cwd(), "data");
-  const pluginsDir = path.join(process.cwd(), "plugins");
-
-  const dbLayer = createDatabase(dataDir);
+  const dbLayer = await createDatabase(path.resolve(__dirname, "../data"));
 
   const pluginManager = loadPlugins({
-    pluginsDir,
+    pluginsDir: config.paths.plugins,
     db: dbLayer.prisma,
-    logger: console,
+    logger,
   });
 
   const api = createApiServer({
@@ -37,50 +29,31 @@ async function main() {
     pluginManager,
   });
 
-  const apiPort = Number(process.env.API_PORT || "3000");
-  const apiServer = api.listen(apiPort, () => {
-    console.log(`API lista en http://localhost:${apiPort}`);
-    console.log(`SQLite: ${dbLayer.dbPath}`);
+  const apiServer = api.listen(config.api.port, () => {
+    logger.info(`API lista en http://localhost:${config.api.port}`);
+    logger.info(`SQLite: ${dbLayer.dbPath}`);
   });
 
   pluginManager.onStart();
 
   const persistence = createPersistence({ dbLayer, pluginManager });
 
-  const roomName = process.env.HAXBALL_ROOM_NAME || "Host Persistente";
-  const maxPlayers = Number(process.env.HAXBALL_MAX_PLAYERS || "16");
-  const publicRoom = process.env.HAXBALL_PUBLIC !== "false";
-  const geoCode = process.env.HAXBALL_GEO_CODE || "AR";
-  const geoLat = Number(process.env.HAXBALL_GEO_LAT || "-34.6037");
-  const geoLon = Number(process.env.HAXBALL_GEO_LON || "-58.3816");
-  const scoreLimit = Number(process.env.HAXBALL_SCORE_LIMIT || "5");
-  const timeLimit = Number(process.env.HAXBALL_TIME_LIMIT || "5");
-  const teamsLock = process.env.HAXBALL_TEAMS_LOCK === "true";
-
-  const haxballOptions: any = {};
-  if (process.env.HAXBALL_PROXY) {
-    haxballOptions.proxy = process.env.HAXBALL_PROXY;
-  }
-
-  const HBInit = await HaxballJS(haxballOptions);
+  const HaxballJS = (HaxballJSImport as any).default || HaxballJSImport;
+  const HBInit = await HaxballJS();
 
   const room = HBInit({
-    roomName,
-    maxPlayers,
-    public: publicRoom,
-    token,
-    noPlayer: true,
-    geo: {
-      code: geoCode,
-      lat: geoLat,
-      lon: geoLon,
-    },
+    roomName: config.room.name,
+    maxPlayers: config.room.maxPlayers,
+    public: config.room.public,
+    noPlayer: config.room.noPlayer,
+    geo: config.room.geo,
+    token: config.security.token,
   });
 
   room.setDefaultStadium("Classic");
-  room.setScoreLimit(scoreLimit);
-  room.setTimeLimit(timeLimit);
-  room.setTeamsLock(teamsLock);
+  room.setScoreLimit(config.room.scoreLimit);
+  room.setTimeLimit(config.room.timeLimit);
+  room.setTeamsLock(config.room.teamsLock);
 
   const teamName = (team: any) => {
     if (team === 1) return "red";
@@ -90,7 +63,7 @@ async function main() {
 
   const emit = (event: any) => {
     persistence.handleEvent({ at: new Date().toISOString(), ...event }, { room }).catch((err: any) => {
-        console.error("Error persistiendo evento:", err);
+        logger.error("Error persistiendo evento:", err);
     });
   };
 
@@ -183,6 +156,8 @@ async function main() {
       const commandBody = message.substring(1).trim();
       const hide = pluginManager.shouldHideCommand(commandBody);
       
+      logger.debug(`Comando interceptado de ${player.name}:`, commandBody, "(Oculto:", hide, ")");
+
       emit({
         type: "player_command",
         player: { id: player.id, name: player.name, team: teamName(player.team), admin: player.admin },
@@ -190,7 +165,7 @@ async function main() {
         invisible: hide,
       });
 
-      return !hide; // Return false to make it invisible to others, true to show
+      return !hide;
     }
 
     emit({
@@ -198,7 +173,7 @@ async function main() {
       player: { id: player.id, name: player.name, team: teamName(player.team) },
       message,
     });
-    return true; // Return true to allow chat message
+    return true;
   };
 
   room.onPlayerBallKick = (player: any) => {
@@ -278,18 +253,17 @@ async function main() {
   };
 
   room.onRoomLink = (link: string) => {
-    console.log("Room link:", link);
+    logger.info(`Room link: ${link}`);
     emit({ type: "room_link", link });
   };
 
-  console.log("Host iniciado. Presiona Ctrl+C para detener.");
+  logger.info("Host iniciado. Presiona Ctrl+C para detener.");
 
-  let isShuttingDown = false;
-  const shutdown = async () => {
-    if (isShuttingDown) return;
-    isShuttingDown = true;
-
-    console.log(`Cerrando host en ${now()}`);
+  let stopping = false;
+  const gracefulShutdown = async () => {
+    if (stopping) return;
+    stopping = true;
+    logger.info("Cerrando host de forma segura...");
 
     try {
       room.stopGame();
@@ -299,15 +273,19 @@ async function main() {
 
     pluginManager.onStop();
     await new Promise((resolve) => apiServer.close(resolve));
-    await dbLayer.prisma.$disconnect();
+    try {
+      await dbLayer.prisma.$disconnect();
+    } catch (err) {
+      logger.error("Error desconectando base de datos:", err);
+    }
     process.exit(0);
   };
 
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", gracefulShutdown);
+  process.on("SIGTERM", gracefulShutdown);
 }
 
-main().catch((error) => {
-  console.error(error);
+main().catch((err) => {
+  logger.error("Error fatal en el host:", err);
   process.exit(1);
 });

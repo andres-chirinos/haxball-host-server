@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { createLogger } from "./logger";
 
 export interface CommandContext {
   player: any;
@@ -16,12 +17,14 @@ export class Plugin {
   commands: Map<string, { handler: CommandHandler, hideTrigger: boolean }>;
   events: Map<string, Array<(event: any, ctx: any) => void>>;
   apiRoutes: Array<(app: any) => void>;
+  logger: ReturnType<typeof createLogger>;
 
   constructor(name: string) {
     this.name = name;
     this.commands = new Map();
     this.events = new Map();
     this.apiRoutes = [];
+    this.logger = createLogger(name);
   }
 
   command(name: string | string[], options: { hideTrigger?: boolean } = {}, handler: CommandHandler) {

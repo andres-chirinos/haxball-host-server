@@ -1,10 +1,12 @@
 import { normalizeTeam } from "./db";
+import { logger } from "./lib/logger";
 
 export function createPersistence({ dbLayer, pluginManager }: any) {
   const { prisma, updatePlayerStats } = dbLayer;
   let activeMatch: any = null;
 
   async function saveRawEvent(event: any) {
+    logger.debug("Guardando evento raw", { type: event.type, at: event.at });
     await prisma.event.create({
       data: {
         at: event.at,
@@ -41,10 +43,12 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
     await saveRawEvent(event);
 
     if (event.type === "player_join") {
+      logger.info("Jugador unió la sala", event.player.name);
       await upsertJoinLeave(event.player, "joins", event.at, event.player.auth, event.player.conn);
     }
 
     if (event.type === "player_leave") {
+      logger.info("Jugador abandonó la sala", event.player.name);
       await upsertJoinLeave(event.player, "leaves", event.at);
     }
 
@@ -64,6 +68,7 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
 
     if (event.type === "game_start") {
       const matchId = `match_${Date.now()}`;
+      logger.info("Partido iniciado", matchId);
       activeMatch = {
         id: matchId,
         score: { red: 0, blue: 0 },
@@ -90,10 +95,11 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
       });
       
       for (const player of event.players || []) {
+        const dbId = dbLayer.getDbPlayerId(player.id);
         await prisma.matchPlayer.create({
           data: {
             match_id: matchId,
-            player_id: player.id,
+            player_id: dbId || player.id, // Fallback, shouldn't happen
             player_name: player.name,
             team: normalizeTeam(player.team),
           },
@@ -117,6 +123,7 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
     }
 
     if (event.type === "team_victory" && activeMatch) {
+      logger.info("Partido finalizado", activeMatch.id, event.score);
       await prisma.match.update({
         where: { match_id: activeMatch.id },
         data: {
