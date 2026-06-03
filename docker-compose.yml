@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   haxball-host:
-    build:
-      context: .
-      network: host
+    build: .
     container_name: haxball-host
     restart: unless-stopped
     ports:

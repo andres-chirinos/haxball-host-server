@@ -58,7 +58,7 @@ async function setup() {
   // 1. Ejecutar Prisma
   console.log("\n📦 Sincronizando base de datos Prisma...");
   try {
-    execSync("npx prisma db push && npx prisma generate", { stdio: "inherit" });
+    execSync("npx prisma@5 db push && npx prisma@5 generate", { stdio: "inherit" });
   } catch (error) {
     console.error("❌ Error configurando Prisma:", error);
     process.exit(1);
