@@ -1,0 +1,63 @@
+const fs = require("fs");
+const path = require("path");
+
+function loadPlugins({ pluginsDir, db, logger }) {
+  fs.mkdirSync(pluginsDir, { recursive: true });
+
+  const pluginFiles = fs
+    .readdirSync(pluginsDir)
+    .filter((file) => file.endsWith(".js"))
+    .sort();
+
+  const plugins = [];
+
+  for (const file of pluginFiles) {
+    const fullPath = path.join(pluginsDir, file);
+    try {
+      // eslint-disable-next-line global-require, import/no-dynamic-require
+      const factory = require(fullPath);
+      const plugin = typeof factory === "function" ? factory({ db, logger }) : factory;
+      if (plugin && typeof plugin === "object") {
+        plugins.push({ name: plugin.name || file, ...plugin });
+      }
+    } catch (error) {
+      logger.error(`No se pudo cargar plugin ${file}:`, error);
+    }
+  }
+
+  return {
+    plugins,
+    onStart() {
+      for (const plugin of plugins) {
+        if (typeof plugin.onStart === "function") {
+          plugin.onStart();
+        }
+      }
+    },
+    onStop() {
+      for (const plugin of plugins) {
+        if (typeof plugin.onStop === "function") {
+          plugin.onStop();
+        }
+      }
+    },
+    onEvent(event, context = {}) {
+      for (const plugin of plugins) {
+        if (typeof plugin.onEvent === "function") {
+          plugin.onEvent(event, context);
+        }
+      }
+    },
+    registerApiRoutes(app) {
+      for (const plugin of plugins) {
+        if (typeof plugin.registerApiRoutes === "function") {
+          plugin.registerApiRoutes(app);
+        }
+      }
+    },
+  };
+}
+
+module.exports = {
+  loadPlugins,
+};
