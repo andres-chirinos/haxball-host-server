@@ -69,34 +69,36 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
             (async () => {
               const dbPlayer = await db.player.findUnique({ where: { name: event.player.name } });
               
+              let playerRoles: string[] = ["user"];
+              try {
+                if (dbPlayer && dbPlayer.roles) playerRoles = JSON.parse(dbPlayer.roles);
+              } catch (e) {}
+
+              let rolesJson: any = {};
+              try {
+                rolesJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", "roles.json"), "utf8"));
+              } catch (e) {}
+
+              const checkPermission = (perm: string): boolean => {
+                let granted = false;
+                let denied = false;
+                for (const roleName of playerRoles) {
+                  const roleDef = rolesJson[roleName];
+                  if (roleDef) {
+                    if (roleDef[perm] === false) denied = true;
+                    if (roleDef[perm] === true) granted = true;
+                  }
+                }
+                return !denied && granted;
+              };
+
               if (cmd.permissions && cmd.permissions.length > 0) {
                 if (!dbPlayer) {
                   return context.room.sendAnnouncement(`❌ Debes estar registrado para usar este comando.`, event.player.id, 0xFF0000, "bold", 2);
                 }
-                
-                let playerRoles: string[] = ["user"];
-                try {
-                  if (dbPlayer.roles) playerRoles = JSON.parse(dbPlayer.roles);
-                } catch (e) {}
-
-                let rolesJson: any = {};
-                try {
-                  rolesJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", "roles.json"), "utf8"));
-                } catch (e) {}
 
                 for (const perm of cmd.permissions) {
-                  let granted = false;
-                  let denied = false;
-                  
-                  for (const roleName of playerRoles) {
-                    const roleDef = rolesJson[roleName];
-                    if (roleDef) {
-                      if (roleDef[perm] === false) denied = true;
-                      if (roleDef[perm] === true) granted = true;
-                    }
-                  }
-                  
-                  if (denied || !granted) {
+                  if (!checkPermission(perm)) {
                     return context.room.sendAnnouncement(`❌ Permiso denegado: requieres el permiso '${perm}'.`, event.player.id, 0xFF0000, "bold", 2);
                   }
                 }
@@ -148,7 +150,8 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
                       }
                       return `Comandos disponibles: !${allCmds.join(", !")}\nUsa !ayuda <comando> para más detalles.`;
                     }
-                  }
+                  },
+                  hasPermission: checkPermission
                 }));
               } catch (e) {
                 logger.error(`Error ejecutando comando ${commandName}:`, e);

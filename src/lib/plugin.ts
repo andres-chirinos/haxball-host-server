@@ -10,6 +10,7 @@ export interface CommandContext {
   db: PrismaClient;
   dbPlayer: any; // El jugador desde la base de datos (con su rol)
   getCommandHelp: (cmdName?: string) => string;
+  hasPermission: (permission: string) => boolean;
 }
 
 export type CommandHandler = (ctx: CommandContext) => void | Promise<void>;

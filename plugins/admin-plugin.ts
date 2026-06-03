@@ -8,7 +8,8 @@ adminPlugin.command("authadmin", {
   hideTrigger: true,
   description: "Reclama el rol de administrador por primera vez.",
   usage: "!authadmin <contraseña>"
-}, async ({ args, player, replyPrivate, db, dbPlayer }) => {
+}, async (ctx) => {
+  const { args, player, replyPrivate, db, dbPlayer } = ctx;
   const password = args[0];
   
   if (!password) {
@@ -42,6 +43,9 @@ adminPlugin.command("authadmin", {
     where: { id: dbPlayer.id },
     data: { roles: JSON.stringify(currentRoles) }
   });
+
+  // Otorgar admin nativo inmediatamente
+  ctx.room.setPlayerAdmin(player.id, true);
 
   adminPlugin.logger.info(`Jugador ${player.name} reclamó el rol de ADMIN exitosamente.`);
   replyPrivate("👑 ¡Felicidades! Ahora tienes permisos de administrador global.");

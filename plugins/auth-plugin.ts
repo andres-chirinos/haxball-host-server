@@ -1,17 +1,22 @@
-import { Plugin } from "../src/lib/plugin";
-import crypto from "crypto";
+import { Plugin, CommandContext } from "../src/lib/plugin";
 import { config } from "../src/config";
+import crypto from "crypto";
 
 const authPlugin = new Plugin("auth-plugin");
 
-// This plugin enforces a Minecraft-style /register and /login system if AUTH_MODE is offline.
-// We keep track of authenticated room player IDs in memory.
+// In memory list of authenticated players
 const authenticatedPlayers = new Set<number>();
 
-// Helper to check password hash
-function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password + config.security.passwordSalt).digest("hex");
-}
+// Helper para dar admin si tiene permisos
+const tryAssignAdmin = (ctx: CommandContext) => {
+  if (ctx.hasPermission("room.admin")) {
+    ctx.room.setPlayerAdmin(ctx.player.id, true);
+  }
+};
+
+const hashPassword = (password: string) => {
+  return crypto.createHash('sha256').update(password + config.security.passwordSalt).digest('hex');
+};
 
 authPlugin.on("player_join", async (event, ctx) => {
   const room = ctx.room;
@@ -53,7 +58,8 @@ authPlugin.command("register", {
   hideTrigger: true,
   description: "Registra una contraseña para tu nombre actual.",
   usage: "!register <contraseña>"
-}, async ({ player, args, replyPrivate, db }) => {
+}, async (ctx) => {
+  const { player, room, args, replyPrivate, db } = ctx;
   if (config.auth.mode === "haxball") {
     return replyPrivate("❌ El servidor usa autenticación nativa de Haxball. No necesitas registrarte.");
   }
@@ -84,13 +90,19 @@ authPlugin.command("register", {
   authenticatedPlayers.add(player.id);
   authPlugin.logger.info(`Jugador ${player.name} registrado con éxito`);
   replyPrivate("✅ Registro completado. Has iniciado sesión automáticamente.");
+  
+  // Asignar admin nativo si corresponde
+  // Need to update dbPlayer in ctx because it didn't exist before register
+  ctx.dbPlayer = await db.player.findUnique({ where: { id: newPlayer.id } });
+  tryAssignAdmin(ctx);
 });
 
 authPlugin.command("login", { 
   hideTrigger: true,
   description: "Inicia sesión con tu contraseña.",
   usage: "!login <contraseña>"
-}, async ({ player, args, replyPrivate, db }) => {
+}, async (ctx) => {
+  const { player, args, replyPrivate, db, dbPlayer, hasPermission } = ctx;
   if (config.auth.mode === "haxball") {
     return replyPrivate("❌ El servidor usa autenticación nativa de Haxball. No necesitas iniciar sesión manualmente.");
   }
@@ -120,6 +132,9 @@ authPlugin.command("login", {
   authenticatedPlayers.add(player.id);
   authPlugin.logger.info(`Jugador ${player.name} inició sesión con éxito`);
   replyPrivate("✅ Has iniciado sesión exitosamente.");
+
+  // Asignar admin nativo si corresponde
+  tryAssignAdmin(ctx);
 });
 
 // Export default the plugin instance
