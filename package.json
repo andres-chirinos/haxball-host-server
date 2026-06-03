@@ -9,7 +9,7 @@
     "host": "tsx src/runner.ts",
     "api": "tsx src/api-server.ts",
     "analyze": "tsx src/analyze.ts",
-    "setup": "prisma db push && prisma generate"
+    "setup": "tsx src/setup.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
