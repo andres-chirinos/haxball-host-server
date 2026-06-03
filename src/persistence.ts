@@ -32,7 +32,7 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
     });
   }
 
-  async function handleEvent(event: any) {
+  async function handleEvent(event: any, context?: any) {
     await saveRawEvent(event);
 
     if (event.type === "player_join") {
@@ -130,7 +130,7 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
     }
 
     if (pluginManager) {
-      pluginManager.onEvent(event, { activeMatch });
+      pluginManager.onEvent(event, { activeMatch, room: context?.room });
     }
   }
 

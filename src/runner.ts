@@ -89,7 +89,7 @@ async function main() {
   };
 
   const emit = (event: any) => {
-    persistence.handleEvent({ at: new Date().toISOString(), ...event }).catch((err: any) => {
+    persistence.handleEvent({ at: new Date().toISOString(), ...event }, { room }).catch((err: any) => {
         console.error("Error persistiendo evento:", err);
     });
   };
@@ -179,6 +179,28 @@ async function main() {
   };
 
   room.onPlayerChat = (player: any, message: string) => {
+    let isCommand = false;
+    let invisible = false;
+
+    if (message.startsWith(".")) {
+      isCommand = true;
+      invisible = true;
+    } else if (message.startsWith("!")) {
+      isCommand = true;
+      invisible = false;
+    }
+
+    if (isCommand) {
+      const commandBody = message.substring(1).trim();
+      emit({
+        type: "player_command",
+        player: { id: player.id, name: player.name, team: teamName(player.team), admin: player.admin },
+        command: commandBody,
+        invisible,
+      });
+      return !invisible; // Return false to make it invisible to others, true to show
+    }
+
     emit({
       type: "player_chat",
       player: { id: player.id, name: player.name, team: teamName(player.team) },

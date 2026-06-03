@@ -15,7 +15,8 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
     const fullPath = path.join(pluginsDir, file);
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const factory = require(fullPath);
+      const required = require(fullPath);
+      const factory = required.default || required;
       const plugin = typeof factory === "function" ? factory({ db, logger }) : factory;
       if (plugin && typeof plugin === "object") {
         plugins.push({ name: plugin.name || file, ...plugin });
