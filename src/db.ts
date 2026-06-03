@@ -18,11 +18,21 @@ export function createDatabase(dataDir: string) {
     },
   });
 
+  // Maps Haxball room player IDs to our persistent Database Player IDs
+  const roomIdToDbId = new Map<number, number>();
+
+  function getDbPlayerId(roomId: number) {
+    return roomIdToDbId.get(roomId) || null;
+  }
+
   async function updatePlayerStats(player: any, patch: any = {}) {
     if (!player || typeof player.id !== "number") return;
 
+    // Use AUTH mode if auth is provided, otherwise OFFLINE mode (name based)
+    const uniqueQuery = player.auth ? { auth: player.auth } : { name: player.name };
+
     const current = await prisma.player.findUnique({
-      where: { player_id: player.id },
+      where: uniqueQuery as any,
     });
 
     const joins = patch.joins !== undefined ? patch.joins : (current ? current.joins : 0);
@@ -30,8 +40,8 @@ export function createDatabase(dataDir: string) {
     const auth = patch.auth !== undefined ? patch.auth : (current ? current.auth : null);
     const conn = patch.conn !== undefined ? patch.conn : (current ? current.conn : null);
 
-    await prisma.player.upsert({
-      where: { player_id: player.id },
+    const dbPlayer = await prisma.player.upsert({
+      where: uniqueQuery as any,
       update: {
         name: player.name || (current ? current.name : "unknown"),
         joins,
@@ -42,7 +52,6 @@ export function createDatabase(dataDir: string) {
         conn,
       },
       create: {
-        player_id: player.id,
         name: player.name || "unknown",
         joins,
         leaves,
@@ -52,6 +61,8 @@ export function createDatabase(dataDir: string) {
         conn,
       },
     });
+
+    roomIdToDbId.set(player.id, dbPlayer.id);
   }
 
   return {
@@ -59,5 +70,6 @@ export function createDatabase(dataDir: string) {
     dbPath,
     normalizeTeam,
     updatePlayerStats,
+    getDbPlayerId,
   };
 }

@@ -179,26 +179,18 @@ async function main() {
   };
 
   room.onPlayerChat = (player: any, message: string) => {
-    let isCommand = false;
-    let invisible = false;
-
-    if (message.startsWith(".")) {
-      isCommand = true;
-      invisible = true;
-    } else if (message.startsWith("!")) {
-      isCommand = true;
-      invisible = false;
-    }
-
-    if (isCommand) {
+    if (message.startsWith("!")) {
       const commandBody = message.substring(1).trim();
+      const hide = pluginManager.shouldHideCommand(commandBody);
+      
       emit({
         type: "player_command",
         player: { id: player.id, name: player.name, team: teamName(player.team), admin: player.admin },
         command: commandBody,
-        invisible,
+        invisible: hide,
       });
-      return !invisible; // Return false to make it invisible to others, true to show
+
+      return !hide; // Return false to make it invisible to others, true to show
     }
 
     emit({

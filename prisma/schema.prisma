@@ -18,13 +18,14 @@ model Event {
 }
 
 model Player {
-  player_id    Int      @id
-  name         String
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  auth         String?  @unique
+  password     String?
   joins        Int      @default(0)
   leaves       Int      @default(0)
   last_team    String   @default("spec")
   last_seen_at String?
-  auth         String?
   conn         String?
 
   @@map("players")

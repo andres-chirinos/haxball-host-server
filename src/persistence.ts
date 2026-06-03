@@ -15,9 +15,14 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
   }
 
   async function upsertJoinLeave(player: any, field: string, at: string, auth?: string, conn?: string) {
-    const current = await prisma.player.findUnique({
-      where: { player_id: player.id },
-    });
+    const dbId = dbLayer.getDbPlayerId(player.id);
+    let current: any = null;
+    if (dbId) {
+      current = await prisma.player.findUnique({ where: { id: dbId } });
+    } else {
+      const uniqueQuery = auth ? { auth } : { name: player.name };
+      current = await prisma.player.findUnique({ where: uniqueQuery as any });
+    }
     
     const joins = field === "joins" ? (current ? current.joins : 0) + 1 : current ? current.joins : 0;
     const leaves = field === "leaves" ? (current ? current.leaves : 0) + 1 : current ? current.leaves : 0;
@@ -44,9 +49,11 @@ export function createPersistence({ dbLayer, pluginManager }: any) {
     }
 
     if (event.type === "team_change") {
-      const current = await prisma.player.findUnique({
-        where: { player_id: event.player.id },
-      });
+      const dbId = dbLayer.getDbPlayerId(event.player.id);
+      let current: any = null;
+      if (dbId) {
+        current = await prisma.player.findUnique({ where: { id: dbId } });
+      }
       await updatePlayerStats(event.player, {
         joins: current ? current.joins : 0,
         leaves: current ? current.leaves : 0,

@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { Plugin } from "./lib/plugin";
 
 export function loadPlugins({ pluginsDir, db, logger }: any) {
   fs.mkdirSync(pluginsDir, { recursive: true });
@@ -9,17 +10,24 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
     .filter((file) => file.endsWith(".js") || file.endsWith(".ts"))
     .sort();
 
-  const plugins: any[] = [];
+  const plugins: Plugin[] = [];
 
   for (const file of pluginFiles) {
     const fullPath = path.join(pluginsDir, file);
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const required = require(fullPath);
-      const factory = required.default || required;
-      const plugin = typeof factory === "function" ? factory({ db, logger }) : factory;
-      if (plugin && typeof plugin === "object") {
-        plugins.push({ name: plugin.name || file, ...plugin });
+      let pluginExport = required.default || required;
+
+      // Compatibility with old format
+      if (typeof pluginExport === "function" && !pluginExport.prototype?.command) {
+        pluginExport = pluginExport({ db, logger });
+      }
+
+      if (pluginExport instanceof Plugin) {
+        plugins.push(pluginExport);
+      } else {
+        logger.warn(`Plugin ${file} no exporta una instancia de Plugin válida.`);
       }
     } catch (error) {
       logger.error(`No se pudo cargar plugin ${file}:`, error);
@@ -30,29 +38,58 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
     plugins,
     onStart() {
       for (const plugin of plugins) {
-        if (typeof plugin.onStart === "function") {
-          plugin.onStart();
-        }
+        const handlers = plugin.events.get("start");
+        if (handlers) handlers.forEach(h => h(null, { db }));
       }
     },
     onStop() {
       for (const plugin of plugins) {
-        if (typeof plugin.onStop === "function") {
-          plugin.onStop();
-        }
+        const handlers = plugin.events.get("stop");
+        if (handlers) handlers.forEach(h => h(null, { db }));
       }
     },
     onEvent(event: any, context: any = {}) {
+      context.db = db;
+
       for (const plugin of plugins) {
-        if (typeof plugin.onEvent === "function") {
-          plugin.onEvent(event, context);
+        const handlers = plugin.events.get(event.type);
+        if (handlers) {
+          handlers.forEach(h => h(event, context));
+        }
+
+        if (event.type === "player_command" && context.room) {
+          const commandFull = event.command;
+          const args = commandFull.split(" ");
+          const commandName = args.shift()?.toLowerCase();
+
+          if (commandName && plugin.commands.has(commandName)) {
+            const cmd = plugin.commands.get(commandName)!;
+            
+            cmd.handler({
+              player: event.player,
+              room: context.room,
+              args,
+              reply: (msg: string) => context.room.sendChat(msg),
+              replyPrivate: (msg: string) => context.room.sendChat(msg, event.player.id),
+              db,
+            });
+          }
         }
       }
     },
+    shouldHideCommand(commandFull: string): boolean {
+      const commandName = commandFull.split(" ")[0].toLowerCase();
+      for (const plugin of plugins) {
+        if (plugin.commands.has(commandName)) {
+          return plugin.commands.get(commandName)!.hideTrigger;
+        }
+      }
+      return false; // Show by default if unknown
+    },
     registerApiRoutes(app: any) {
       for (const plugin of plugins) {
-        if (typeof plugin.registerApiRoutes === "function") {
-          plugin.registerApiRoutes(app);
+        for (const handler of plugin.apiRoutes) {
+          handler(app);
         }
       }
     },
