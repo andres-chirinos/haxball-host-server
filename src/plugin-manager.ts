@@ -65,28 +65,52 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
           if (commandName && plugin.commands.has(commandName)) {
             const cmd = plugin.commands.get(commandName)!;
             
-            Promise.resolve(cmd.handler({
-              player: event.player,
-              room: context.room,
-              args,
-              reply: async (msg: string) => {
-                try {
-                  await context.room.sendAnnouncement(msg, null, 0xFFFFFF, "bold", 1);
-                } catch (e) {
-                  logger.error("Error enviando chat general:", e);
+            // Evaluamos roles y ejecutamos de forma asíncrona
+            (async () => {
+              const dbPlayer = await db.player.findUnique({ where: { name: event.player.name } });
+              
+              if (cmd.role) {
+                if (!dbPlayer) {
+                  return context.room.sendAnnouncement(`❌ Debes estar registrado para usar este comando.`, event.player.id, 0xFF0000, "bold", 2);
                 }
-              },
-              replyPrivate: async (msg: string) => {
-                try {
-                  await context.room.sendAnnouncement(msg, event.player.id, 0xFFFF00, "normal", 1);
-                } catch (e) {
-                  logger.error("Error enviando chat privado a " + event.player.id + ":", e);
+                
+                const roleHierarchy = ["user", "moderator", "admin"];
+                const playerRoleLevel = roleHierarchy.indexOf(dbPlayer.role || "user");
+                const requiredRoleLevel = roleHierarchy.indexOf(cmd.role);
+                
+                if (playerRoleLevel < requiredRoleLevel) {
+                  return context.room.sendAnnouncement(`❌ No tienes permisos suficientes. Requiere rol: ${cmd.role}.`, event.player.id, 0xFF0000, "bold", 2);
                 }
-              },
-              db,
-            })).catch(e => {
-              logger.error(`Error ejecutando comando ${commandName}:`, e);
-            });
+              }
+
+              try {
+                await Promise.resolve(cmd.handler({
+                  player: event.player,
+                  room: context.room,
+                  args,
+                  reply: async (msg: string) => {
+                    try {
+                      await new Promise(r => setTimeout(r, 50)); // Pequeño delay para no colisionar con el hilo del navegador
+                      await context.room.sendAnnouncement(msg, null, 0xFFFFFF, "bold", 1);
+                    } catch (e) {
+                      logger.error("Error enviando chat general:", e);
+                    }
+                  },
+                  replyPrivate: async (msg: string) => {
+                    try {
+                      await new Promise(r => setTimeout(r, 50));
+                      await context.room.sendAnnouncement(msg, event.player.id, 0xFFFF00, "normal", 1);
+                    } catch (e) {
+                      logger.error("Error enviando chat privado a " + event.player.id + ":", e);
+                    }
+                  },
+                  db,
+                  dbPlayer,
+                }));
+              } catch (e) {
+                logger.error(`Error ejecutando comando ${commandName}:`, e);
+              }
+            })();
           }
         }
       }

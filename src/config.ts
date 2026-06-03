@@ -25,6 +25,7 @@ export const config = {
   security: {
     passwordSalt: process.env.PASSWORD_SALT || "default_salt_change_me",
     token: process.env.HAXBALL_TOKEN || "",
+    adminPassword: process.env.ADMIN_PASSWORD || "superadmin",
   },
   system: {
     logLevel: process.env.LOG_LEVEL || "info",
