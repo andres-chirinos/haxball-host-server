@@ -15,7 +15,7 @@ export type CommandHandler = (ctx: CommandContext) => void | Promise<void>;
 
 export class Plugin {
   name: string;
-  commands: Map<string, { handler: CommandHandler, hideTrigger: boolean, role?: string }>;
+  commands: Map<string, { handler: CommandHandler, hideTrigger: boolean, permissions?: string[] }>;
   events: Map<string, Array<(event: any, ctx: any) => void>>;
   apiRoutes: Array<(app: any) => void>;
   logger: ReturnType<typeof createLogger>;
@@ -28,11 +28,11 @@ export class Plugin {
     this.logger = createLogger(name);
   }
 
-  command(name: string | string[], options: { hideTrigger?: boolean, role?: string } = {}, handler: CommandHandler) {
+  command(name: string | string[], options: { hideTrigger?: boolean, permissions?: string[] } = {}, handler: CommandHandler) {
     const hideTrigger = options.hideTrigger ?? false; // Default visible trigger
     const names = Array.isArray(name) ? name : [name];
     for (const n of names) {
-      this.commands.set(n.toLowerCase(), { handler, hideTrigger, role: options.role });
+      this.commands.set(n.toLowerCase(), { handler, hideTrigger, permissions: options.permissions });
     }
   }
 

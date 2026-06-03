@@ -20,51 +20,99 @@ adminPlugin.command("authadmin", { hideTrigger: true }, async ({ args, player, r
     return replyPrivate("❌ Primero debes registrarte/loguearte (!register o !login) para reclamar el admin.");
   }
 
-  if (dbPlayer.role === "admin") {
+  if (dbPlayer.roles && dbPlayer.roles.includes('"admin"')) {
     return replyPrivate("✅ Ya eres administrador.");
   }
 
   // Hacer upgrade del rol
+  let currentRoles = ["user"];
+  try {
+    if (dbPlayer.roles) currentRoles = JSON.parse(dbPlayer.roles);
+  } catch (e) {}
+
+  if (!currentRoles.includes("admin")) {
+    currentRoles.push("admin");
+  }
+
   await db.player.update({
     where: { id: dbPlayer.id },
-    data: { role: "admin" }
+    data: { roles: JSON.stringify(currentRoles) }
   });
 
   adminPlugin.logger.info(`Jugador ${player.name} reclamó el rol de ADMIN exitosamente.`);
   replyPrivate("👑 ¡Felicidades! Ahora tienes permisos de administrador global.");
 });
 
-// Cambiar el rol de alguien (Solo admins)
-adminPlugin.command("setrole", { hideTrigger: false, role: "admin" }, async ({ args, player, reply, db }) => {
+// Añadir un rol a alguien (Solo para quienes tengan command.admin)
+adminPlugin.command("addrole", { hideTrigger: false, permissions: ["command.admin"] }, async ({ args, player, reply, db }) => {
   if (args.length < 2) {
-    return reply("❌ Uso: !setrole <nombre_del_jugador> <user|moderator|admin>");
+    return reply("❌ Uso: !addrole <nombre_del_jugador> <rol>");
   }
 
   const newRole = args.pop()!;
   const targetName = args.join(" ");
 
-  const validRoles = ["user", "moderator", "admin"];
-  if (!validRoles.includes(newRole.toLowerCase())) {
-    return reply(`❌ Rol inválido. Usa uno de estos: ${validRoles.join(", ")}`);
-  }
-
   const targetPlayer = await db.player.findUnique({ where: { name: targetName } });
-
   if (!targetPlayer) {
     return reply(`❌ El jugador ${targetName} no fue encontrado en la base de datos.`);
   }
 
+  let roles = ["user"];
+  try {
+    if (targetPlayer.roles) roles = JSON.parse(targetPlayer.roles);
+  } catch(e) {}
+
+  if (roles.includes(newRole)) {
+    return reply(`❌ El jugador ${targetName} ya tiene el rol '${newRole}'.`);
+  }
+
+  roles.push(newRole);
+
   await db.player.update({
     where: { id: targetPlayer.id },
-    data: { role: newRole.toLowerCase() }
+    data: { roles: JSON.stringify(roles) }
   });
 
-  adminPlugin.logger.info(`Admin ${player.name} cambió el rol de ${targetName} a ${newRole}`);
-  reply(`✅ El jugador ${targetName} ahora tiene el rol de: **${newRole.toUpperCase()}**`);
+  adminPlugin.logger.info(`Admin ${player.name} añadió el rol '${newRole}' a ${targetName}`);
+  reply(`✅ Se ha añadido el rol **${newRole}** al jugador ${targetName}.`);
+});
+
+// Remover un rol
+adminPlugin.command("delrole", { hideTrigger: false, permissions: ["command.admin"] }, async ({ args, player, reply, db }) => {
+  if (args.length < 2) {
+    return reply("❌ Uso: !delrole <nombre_del_jugador> <rol>");
+  }
+
+  const roleToRemove = args.pop()!;
+  const targetName = args.join(" ");
+
+  const targetPlayer = await db.player.findUnique({ where: { name: targetName } });
+  if (!targetPlayer) {
+    return reply(`❌ El jugador ${targetName} no fue encontrado en la base de datos.`);
+  }
+
+  let roles = ["user"];
+  try {
+    if (targetPlayer.roles) roles = JSON.parse(targetPlayer.roles);
+  } catch(e) {}
+
+  if (!roles.includes(roleToRemove)) {
+    return reply(`❌ El jugador ${targetName} no tiene el rol '${roleToRemove}'.`);
+  }
+
+  roles = roles.filter(r => r !== roleToRemove);
+
+  await db.player.update({
+    where: { id: targetPlayer.id },
+    data: { roles: JSON.stringify(roles) }
+  });
+
+  adminPlugin.logger.info(`Admin ${player.name} removió el rol '${roleToRemove}' de ${targetName}`);
+  reply(`✅ Se ha removido el rol **${roleToRemove}** del jugador ${targetName}.`);
 });
 
 // Comando exclusivo para moderadores (Ejemplo)
-adminPlugin.command("modtest", { hideTrigger: false, role: "moderator" }, ({ reply, player }) => {
+adminPlugin.command("modtest", { hideTrigger: false, permissions: ["command.moderator"] }, ({ reply, player }) => {
   reply(`🛡️ ¡Hola ${player.name}! Eres moderador o administrador, por eso puedes ejecutar este comando.`);
 });
 

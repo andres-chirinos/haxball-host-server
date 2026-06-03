@@ -27,7 +27,7 @@ model Player {
   last_team    String   @default("spec")
   last_seen_at String?
   conn         String?
-  role         String   @default("user")
+  roles        String   @default("[\"user\"]")
 
   @@map("players")
 }

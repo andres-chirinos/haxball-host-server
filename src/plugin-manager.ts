@@ -69,17 +69,36 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
             (async () => {
               const dbPlayer = await db.player.findUnique({ where: { name: event.player.name } });
               
-              if (cmd.role) {
+              if (cmd.permissions && cmd.permissions.length > 0) {
                 if (!dbPlayer) {
-                  return context.room.sendAnnouncement(`❌ Debes estar registrado para usar este comando.`, event.player.id, 0xFF0000, "bold", 2);
+                  return context.room.sendAnnoun  cement(`❌ Debes estar registrado para usar este comando.`, event.player.id, 0xFF0000, "bold", 2);
                 }
                 
-                const roleHierarchy = ["user", "moderator", "admin"];
-                const playerRoleLevel = roleHierarchy.indexOf(dbPlayer.role || "user");
-                const requiredRoleLevel = roleHierarchy.indexOf(cmd.role);
-                
-                if (playerRoleLevel < requiredRoleLevel) {
-                  return context.room.sendAnnouncement(`❌ No tienes permisos suficientes. Requiere rol: ${cmd.role}.`, event.player.id, 0xFF0000, "bold", 2);
+                let playerRoles: string[] = ["user"];
+                try {
+                  if (dbPlayer.roles) playerRoles = JSON.parse(dbPlayer.roles);
+                } catch (e) {}
+
+                let rolesJson: any = {};
+                try {
+                  rolesJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", "roles.json"), "utf8"));
+                } catch (e) {}
+
+                for (const perm of cmd.permissions) {
+                  let granted = false;
+                  let denied = false;
+                  
+                  for (const roleName of playerRoles) {
+                    const roleDef = rolesJson[roleName];
+                    if (roleDef) {
+                      if (roleDef[perm] === false) denied = true;
+                      if (roleDef[perm] === true) granted = true;
+                    }
+                  }
+                  
+                  if (denied || !granted) {
+                    return context.room.sendAnnouncement(`❌ Permiso denegado: requieres el permiso '${perm}'.`, event.player.id, 0xFF0000, "bold", 2);
+                  }
                 }
               }
 
