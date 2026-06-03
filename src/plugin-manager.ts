@@ -65,13 +65,27 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
           if (commandName && plugin.commands.has(commandName)) {
             const cmd = plugin.commands.get(commandName)!;
             
-            cmd.handler({
+            Promise.resolve(cmd.handler({
               player: event.player,
               room: context.room,
               args,
-              reply: (msg: string) => context.room.sendChat(msg),
-              replyPrivate: (msg: string) => context.room.sendChat(msg, event.player.id),
+              reply: async (msg: string) => {
+                try {
+                  await context.room.sendAnnouncement(msg, null, 0xFFFFFF, "bold", 1);
+                } catch (e) {
+                  logger.error("Error enviando chat general:", e);
+                }
+              },
+              replyPrivate: async (msg: string) => {
+                try {
+                  await context.room.sendAnnouncement(msg, event.player.id, 0xFFFF00, "normal", 1);
+                } catch (e) {
+                  logger.error("Error enviando chat privado a " + event.player.id + ":", e);
+                }
+              },
               db,
+            })).catch(e => {
+              logger.error(`Error ejecutando comando ${commandName}:`, e);
             });
           }
         }

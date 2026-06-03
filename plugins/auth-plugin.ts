@@ -24,14 +24,14 @@ authPlugin.on("player_join", async (event, ctx) => {
     const existingPlayer = await ctx.db.player.findUnique({ where: { auth: player.auth } });
     if (existingPlayer) {
       authenticatedPlayers.add(player.id);
-      room.sendChat(`👋 Bienvenido de vuelta ${player.name} (Autenticado automáticamente).`, player.id);
+      room.sendAnnouncement(`👋 Bienvenido de vuelta ${player.name} (Autenticado automáticamente).`, player.id, 0xFFFF00, "normal", 1);
     } else {
       // First time joining with this auth
       authenticatedPlayers.add(player.id);
-      room.sendChat(`👋 Bienvenido ${player.name}. Tu cuenta ha sido vinculada a tu ID de Haxball automáticamente.`, player.id);
+      room.sendAnnouncement(`👋 Bienvenido ${player.name}. Tu cuenta ha sido vinculada a tu ID de Haxball automáticamente.`, player.id, 0xFFFF00, "normal", 1);
     }
   } else {
-    room.sendChat(`👋 Bienvenido ${player.name}. Por favor usa !register <contraseña> o !login <contraseña>.`, player.id);
+    room.sendAnnouncement(`👋 Bienvenido ${player.name}. Por favor usa !register <contraseña> o !login <contraseña>.`, player.id, 0xFFFF00, "normal", 1);
     // Optional timeout kick
     // setTimeout(() => {
     //   if (!authenticatedPlayers.has(player.id)) {
