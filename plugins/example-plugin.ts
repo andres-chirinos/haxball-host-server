@@ -14,11 +14,19 @@ examplePlugin.on("team_victory", (event) => {
   examplePlugin.logger.info("Partido finalizado", event.score);
 });
 
-examplePlugin.command(["help", "ayuda"], { hideTrigger: false }, ({ reply }) => {
-  reply("Comandos disponibles: !ayuda, !info, !rank");
+examplePlugin.command(["help", "ayuda"], { 
+  hideTrigger: false, 
+  description: "Muestra la lista de comandos o ayuda específica de uno.", 
+  usage: "!ayuda [comando]" 
+}, ({ args, reply, getCommandHelp }) => {
+  const targetCmd = args[0]?.toLowerCase();
+  reply(getCommandHelp(targetCmd));
 });
 
-examplePlugin.command("info", { hideTrigger: true }, ({ replyPrivate }) => {
+examplePlugin.command("info", { 
+  hideTrigger: true,
+  description: "Muestra información técnica del servidor."
+}, ({ replyPrivate }) => {
   replyPrivate("Este es un servidor persistente usando TypeScript, Prisma y el nuevo framework de plugins.");
 });
 

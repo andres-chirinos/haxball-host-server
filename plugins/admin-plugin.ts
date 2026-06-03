@@ -4,7 +4,11 @@ import { config } from "../src/config";
 const adminPlugin = new Plugin("admin-plugin");
 
 // Reclama el rol de administrador por primera vez
-adminPlugin.command("authadmin", { hideTrigger: true }, async ({ args, player, replyPrivate, db, dbPlayer }) => {
+adminPlugin.command("authadmin", { 
+  hideTrigger: true,
+  description: "Reclama el rol de administrador por primera vez.",
+  usage: "!authadmin <contraseña>"
+}, async ({ args, player, replyPrivate, db, dbPlayer }) => {
   const password = args[0];
   
   if (!password) {
@@ -44,7 +48,12 @@ adminPlugin.command("authadmin", { hideTrigger: true }, async ({ args, player, r
 });
 
 // Añadir un rol a alguien (Solo para quienes tengan command.admin)
-adminPlugin.command("addrole", { hideTrigger: false, permissions: ["command.admin"] }, async ({ args, player, reply, db }) => {
+adminPlugin.command("addrole", { 
+  hideTrigger: false, 
+  permissions: ["command.admin"],
+  description: "Añade un rol a un jugador.",
+  usage: "!addrole <nombre_del_jugador> <rol>"
+}, async ({ args, player, reply, db }) => {
   if (args.length < 2) {
     return reply("❌ Uso: !addrole <nombre_del_jugador> <rol>");
   }
@@ -78,7 +87,12 @@ adminPlugin.command("addrole", { hideTrigger: false, permissions: ["command.admi
 });
 
 // Remover un rol
-adminPlugin.command("delrole", { hideTrigger: false, permissions: ["command.admin"] }, async ({ args, player, reply, db }) => {
+adminPlugin.command("delrole", { 
+  hideTrigger: false, 
+  permissions: ["command.admin"],
+  description: "Remueve un rol de un jugador.",
+  usage: "!delrole <nombre_del_jugador> <rol>"
+}, async ({ args, player, reply, db }) => {
   if (args.length < 2) {
     return reply("❌ Uso: !delrole <nombre_del_jugador> <rol>");
   }
@@ -112,7 +126,11 @@ adminPlugin.command("delrole", { hideTrigger: false, permissions: ["command.admi
 });
 
 // Comando exclusivo para moderadores (Ejemplo)
-adminPlugin.command("modtest", { hideTrigger: false, permissions: ["command.moderator"] }, ({ reply, player }) => {
+adminPlugin.command("modtest", { 
+  hideTrigger: false, 
+  permissions: ["command.moderator"],
+  description: "Comando de prueba exclusivo para moderadores."
+}, ({ reply, player }) => {
   reply(`🛡️ ¡Hola ${player.name}! Eres moderador o administrador, por eso puedes ejecutar este comando.`);
 });
 

@@ -71,7 +71,7 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
               
               if (cmd.permissions && cmd.permissions.length > 0) {
                 if (!dbPlayer) {
-                  return context.room.sendAnnoun  cement(`❌ Debes estar registrado para usar este comando.`, event.player.id, 0xFF0000, "bold", 2);
+                  return context.room.sendAnnouncement(`❌ Debes estar registrado para usar este comando.`, event.player.id, 0xFF0000, "bold", 2);
                 }
                 
                 let playerRoles: string[] = ["user"];
@@ -125,6 +125,30 @@ export function loadPlugins({ pluginsDir, db, logger }: any) {
                   },
                   db,
                   dbPlayer,
+                  getCommandHelp: (targetCmd?: string) => {
+                    if (targetCmd) {
+                      for (const p of plugins) {
+                        if (p.commands.has(targetCmd)) {
+                          const c = p.commands.get(targetCmd)!;
+                          let str = `Comando: !${targetCmd}`;
+                          if (c.usage) str += `\nUso: ${c.usage}`;
+                          if (c.description) str += `\nInfo: ${c.description}`;
+                          if (c.permissions && c.permissions.length > 0) str += `\nPermisos: ${c.permissions.join(", ")}`;
+                          return str;
+                        }
+                      }
+                      return `❌ Comando !${targetCmd} no encontrado.`;
+                    } else {
+                      const allCmds: string[] = [];
+                      for (const p of plugins) {
+                        for (const name of p.commands.keys()) {
+                          // Filter aliases if we wanted, but we can just show all keys
+                          allCmds.push(name);
+                        }
+                      }
+                      return `Comandos disponibles: !${allCmds.join(", !")}\nUsa !ayuda <comando> para más detalles.`;
+                    }
+                  }
                 }));
               } catch (e) {
                 logger.error(`Error ejecutando comando ${commandName}:`, e);

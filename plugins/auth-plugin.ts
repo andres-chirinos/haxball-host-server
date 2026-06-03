@@ -49,7 +49,11 @@ authPlugin.on("player_leave", (event) => {
 // El host oficial no expone onPlayerChat pre-intercept para todos los plugins si devuelven false en onPlayerChat en runner.
 // Pero como concepto de plugin basta con no dejarlos jugar.
 
-authPlugin.command("register", { hideTrigger: true }, async ({ player, args, replyPrivate, db }) => {
+authPlugin.command("register", { 
+  hideTrigger: true,
+  description: "Registra una contraseña para tu nombre actual.",
+  usage: "!register <contraseña>"
+}, async ({ player, args, replyPrivate, db }) => {
   if (config.auth.mode === "haxball") {
     return replyPrivate("❌ El servidor usa autenticación nativa de Haxball. No necesitas registrarte.");
   }
@@ -82,7 +86,11 @@ authPlugin.command("register", { hideTrigger: true }, async ({ player, args, rep
   replyPrivate("✅ Registro completado. Has iniciado sesión automáticamente.");
 });
 
-authPlugin.command("login", { hideTrigger: true }, async ({ player, args, replyPrivate, db }) => {
+authPlugin.command("login", { 
+  hideTrigger: true,
+  description: "Inicia sesión con tu contraseña.",
+  usage: "!login <contraseña>"
+}, async ({ player, args, replyPrivate, db }) => {
   if (config.auth.mode === "haxball") {
     return replyPrivate("❌ El servidor usa autenticación nativa de Haxball. No necesitas iniciar sesión manualmente.");
   }
