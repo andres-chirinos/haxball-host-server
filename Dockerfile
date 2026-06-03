@@ -1,8 +1,5 @@
-# Usa una imagen base oficial de Node.js (bookworm-slim es ligera y compatible con SQLite/Prisma)
-FROM node:22-bookworm-slim
-
-# Instalar openssl (requerido por Prisma para conectarse a la base de datos)
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Usa la imagen completa de Node.js 20 (LTS) para mayor estabilidad al compilar módulos nativos
+FROM node:20-bookworm
 
 # Establecer el directorio de trabajo dentro del contenedor
 WORKDIR /app
@@ -10,18 +7,21 @@ WORKDIR /app
 # Copiar los archivos de definición de dependencias
 COPY package.json package-lock.json ./
 
-# Instalar las dependencias (usamos ci para una instalación más limpia basada en el package-lock)
-RUN npm ci
+# Instalar tsx globalmente para asegurar que esté disponible en el CMD
+RUN npm install -g tsx
 
-# Copiar el esquema de Prisma y generar el cliente de base de datos
+# Instalar las dependencias (usamos install en lugar de ci para evitar un bug de npm)
+RUN npm install
+
+# Copiar el esquema de Prisma y generar el cliente (ahora con network: host no fallará el DNS)
 COPY prisma ./prisma
 RUN npx prisma generate
 
 # Copiar el resto del código fuente
 COPY . .
 
-# Exponer el puerto de la API (por defecto 3000 según .env.example)
+# Exponer el puerto de la API
 EXPOSE 3000
 
-# Comando por defecto para iniciar el host
-CMD ["npm", "start"]
+# Comando para configurar (setup) y luego iniciar la aplicación
+CMD ["sh", "-c", "npm run setup && npm start"]
