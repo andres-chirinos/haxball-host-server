@@ -2,18 +2,27 @@
   "name": "haxball-host-persistente",
   "version": "1.0.0",
   "description": "Host headless de Haxball con persistencia de partidos y jugadores",
-  "main": "src/runner.js",
+  "main": "src/runner.ts",
   "type": "commonjs",
   "scripts": {
-    "start": "node src/runner.js",
-    "host": "node src/runner.js",
-    "api": "node src/api-server.js",
-    "analyze": "node src/analyze.js"
+    "start": "tsx src/runner.ts",
+    "host": "tsx src/runner.ts",
+    "api": "tsx src/api-server.ts",
+    "analyze": "tsx src/analyze.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "haxball.js": "^4.0.3"
+  },
+  "devDependencies": {
+    "@prisma/client": "^5.22.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.9.1",
+    "prisma": "^5.22.0",
+    "rimraf": "^6.1.3",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
   }
 }

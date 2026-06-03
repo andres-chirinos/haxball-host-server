@@ -1,13 +1,14 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+dotenv.config();
 
-const path = require("path");
-const HaxballJSImport = require("haxball.js");
-const { createPersistence } = require("./persistence");
-const { createDatabase } = require("./db");
-const { createApiServer } = require("./api");
-const { loadPlugins } = require("./plugin-manager");
+import path from "path";
+import HaxballJSImport from "haxball.js";
+import { createPersistence } from "./persistence";
+import { createDatabase } from "./db";
+import { createApiServer } from "./api";
+import { loadPlugins } from "./plugin-manager";
 
-const HaxballJS = HaxballJSImport.default || HaxballJSImport;
+const HaxballJS = (HaxballJSImport as any).default || HaxballJSImport;
 
 function now() {
   return new Date().toISOString();
@@ -27,12 +28,12 @@ async function main() {
 
   const pluginManager = loadPlugins({
     pluginsDir,
-    db: dbLayer.db,
+    db: dbLayer.prisma,
     logger: console,
   });
 
   const api = createApiServer({
-    db: dbLayer.db,
+    prisma: dbLayer.prisma,
     pluginManager,
   });
 
@@ -56,7 +57,7 @@ async function main() {
   const timeLimit = Number(process.env.HAXBALL_TIME_LIMIT || "5");
   const teamsLock = process.env.HAXBALL_TEAMS_LOCK === "true";
 
-  const haxballOptions = {};
+  const haxballOptions: any = {};
   if (process.env.HAXBALL_PROXY) {
     haxballOptions.proxy = process.env.HAXBALL_PROXY;
   }
@@ -81,31 +82,33 @@ async function main() {
   room.setTimeLimit(timeLimit);
   room.setTeamsLock(teamsLock);
 
-  const teamName = (team) => {
+  const teamName = (team: any) => {
     if (team === 1) return "red";
     if (team === 2) return "blue";
     return "spec";
   };
 
-  const emit = (event) => {
-    persistence.handleEvent({ at: new Date().toISOString(), ...event });
+  const emit = (event: any) => {
+    persistence.handleEvent({ at: new Date().toISOString(), ...event }).catch((err: any) => {
+        console.error("Error persistiendo evento:", err);
+    });
   };
 
-  room.onPlayerJoin = (player) => {
+  room.onPlayerJoin = (player: any) => {
     emit({
       type: "player_join",
       player: { id: player.id, name: player.name, team: teamName(player.team) },
     });
   };
 
-  room.onPlayerLeave = (player) => {
+  room.onPlayerLeave = (player: any) => {
     emit({
       type: "player_leave",
       player: { id: player.id, name: player.name, team: teamName(player.team) },
     });
   };
 
-  room.onPlayerTeamChange = (changedPlayer, byPlayer) => {
+  room.onPlayerTeamChange = (changedPlayer: any, byPlayer: any) => {
     emit({
       type: "team_change",
       player: { id: changedPlayer.id, name: changedPlayer.name, team: teamName(changedPlayer.team) },
@@ -114,8 +117,8 @@ async function main() {
     });
   };
 
-  room.onGameStart = (byPlayer) => {
-    const players = room.getPlayerList().map((p) => ({
+  room.onGameStart = (byPlayer: any) => {
+    const players = room.getPlayerList().map((p: any) => ({
       id: p.id,
       name: p.name,
       team: teamName(p.team),
@@ -128,11 +131,11 @@ async function main() {
     });
   };
 
-  room.onTeamGoal = (team) => {
+  room.onTeamGoal = (team: any) => {
     emit({ type: "team_goal", team: teamName(team) });
   };
 
-  room.onTeamVictory = (scores) => {
+  room.onTeamVictory = (scores: any) => {
     emit({
       type: "team_victory",
       score: { red: scores.red, blue: scores.blue },
@@ -142,14 +145,14 @@ async function main() {
     });
   };
 
-  room.onGameStop = (byPlayer) => {
+  room.onGameStop = (byPlayer: any) => {
     emit({
       type: "game_stop",
       byPlayer: byPlayer ? { id: byPlayer.id, name: byPlayer.name } : null,
     });
   };
 
-  room.onRoomLink = (link) => {
+  room.onRoomLink = (link: string) => {
     console.log("Room link:", link);
   };
 
@@ -170,7 +173,7 @@ async function main() {
 
     pluginManager.onStop();
     await new Promise((resolve) => apiServer.close(resolve));
-    dbLayer.db.close();
+    await dbLayer.prisma.$disconnect();
     process.exit(0);
   };
 

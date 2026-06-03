@@ -1,20 +1,21 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+dotenv.config();
 
-const path = require("path");
-const { createDatabase } = require("./db");
-const { createApiServer } = require("./api");
-const { loadPlugins } = require("./plugin-manager");
+import path from "path";
+import { createDatabase } from "./db";
+import { createApiServer } from "./api";
+import { loadPlugins } from "./plugin-manager";
 
 const dataDir = path.join(process.cwd(), "data");
 const pluginsDir = path.join(process.cwd(), "plugins");
 
-const { db, dbPath } = createDatabase(dataDir);
+const dbLayer = createDatabase(dataDir);
 
 const app = createApiServer({
-  db,
+  prisma: dbLayer.prisma,
   pluginManager: loadPlugins({
     pluginsDir,
-    db,
+    db: dbLayer.prisma,
     logger: console,
   }),
 });
@@ -23,5 +24,5 @@ const port = Number(process.env.API_PORT || "3000");
 
 app.listen(port, () => {
   console.log(`API lista en http://localhost:${port}`);
-  console.log(`SQLite: ${dbPath}`);
+  console.log(`SQLite: ${dbLayer.dbPath}`);
 });

@@ -1,0 +1,75 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:../data/haxball.sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Event {
+  id           Int      @id @default(autoincrement())
+  at           String
+  type         String
+  payload_json String
+
+  @@index([type, at])
+  @@map("events")
+}
+
+model Player {
+  player_id    Int      @id
+  name         String
+  joins        Int      @default(0)
+  leaves       Int      @default(0)
+  last_team    String   @default("spec")
+  last_seen_at String?
+
+  @@map("players")
+}
+
+model Match {
+  match_id              String        @id
+  started_at            String
+  ended_at              String?
+  started_by_id         Int?
+  started_by_name       String?
+  red_score             Int           @default(0)
+  blue_score            Int           @default(0)
+  time_seconds          Int?
+  score_limit           Int?
+  time_limit            Int?
+  players_at_start_json String
+
+  goals                 MatchGoal[]
+  players               MatchPlayer[]
+
+  @@map("matches")
+}
+
+model MatchGoal {
+  id         Int    @id @default(autoincrement())
+  match_id   String
+  at         String
+  team       String
+  red_score  Int
+  blue_score Int
+
+  match Match @relation(fields: [match_id], references: [match_id])
+
+  @@index([match_id])
+  @@map("match_goals")
+}
+
+model MatchPlayer {
+  id          Int    @id @default(autoincrement())
+  match_id    String
+  player_id   Int
+  player_name String
+  team        String
+
+  match Match @relation(fields: [match_id], references: [match_id])
+
+  @@index([match_id])
+  @@map("match_players")
+}

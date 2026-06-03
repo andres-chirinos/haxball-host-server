@@ -1,20 +1,20 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
 
-function loadPlugins({ pluginsDir, db, logger }) {
+export function loadPlugins({ pluginsDir, db, logger }: any) {
   fs.mkdirSync(pluginsDir, { recursive: true });
 
   const pluginFiles = fs
     .readdirSync(pluginsDir)
-    .filter((file) => file.endsWith(".js"))
+    .filter((file) => file.endsWith(".js") || file.endsWith(".ts"))
     .sort();
 
-  const plugins = [];
+  const plugins: any[] = [];
 
   for (const file of pluginFiles) {
     const fullPath = path.join(pluginsDir, file);
     try {
-      // eslint-disable-next-line global-require, import/no-dynamic-require
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const factory = require(fullPath);
       const plugin = typeof factory === "function" ? factory({ db, logger }) : factory;
       if (plugin && typeof plugin === "object") {
@@ -41,14 +41,14 @@ function loadPlugins({ pluginsDir, db, logger }) {
         }
       }
     },
-    onEvent(event, context = {}) {
+    onEvent(event: any, context: any = {}) {
       for (const plugin of plugins) {
         if (typeof plugin.onEvent === "function") {
           plugin.onEvent(event, context);
         }
       }
     },
-    registerApiRoutes(app) {
+    registerApiRoutes(app: any) {
       for (const plugin of plugins) {
         if (typeof plugin.registerApiRoutes === "function") {
           plugin.registerApiRoutes(app);
@@ -57,7 +57,3 @@ function loadPlugins({ pluginsDir, db, logger }) {
     },
   };
 }
-
-module.exports = {
-  loadPlugins,
-};
