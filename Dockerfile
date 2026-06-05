@@ -1,5 +1,9 @@
-# Usa la imagen completa de Node.js 20 (LTS) para mayor estabilidad al compilar módulos nativos
-FROM node:20-bookworm
+# Usa Node.js 22 en una imagen slim para reducir superficie de ataque y mantener compatibilidad con módulos nativos
+FROM node:22-bookworm-slim
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
+	&& rm -rf /var/lib/apt/lists/*
 
 # Establecer el directorio de trabajo dentro del contenedor
 WORKDIR /app
@@ -19,4 +23,4 @@ COPY . .
 EXPOSE 3000
 
 # Comando para configurar (setup) y luego iniciar la aplicación
-CMD ["sh", "-c", "npx tsx src/setup.ts && npx tsx src/runner.ts"]
+CMD ["sh", "-c", "npm run setup && npm start"]

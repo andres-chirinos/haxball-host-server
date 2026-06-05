@@ -52,6 +52,15 @@ El host levanta paralelamente una API REST en el puerto definido (`3000` por def
 - `GET /api/matches/:matchId`
 - `GET /api/stats/wins`
 
+## 🐳 Docker y Dokploy
+Si despliegas con Docker o Dokploy, usa red de host para evitar que Haxball quede detrás del bridge de Docker:
+
+```yaml
+network_mode: host
+```
+
+Si tu plataforma no permite red de host, los jugadores pueden ver `Failed to connect to room host` aunque la API HTTP funcione bien.
+
 ## 🔍 Análisis Rápido
 Puedes verificar cuánta información hay en la base de datos ejecutando:
 ```bash

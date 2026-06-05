@@ -1,12 +1,9 @@
-version: '3.8'
-
 services:
   haxball-host:
     build: .
     container_name: haxball-host
     restart: unless-stopped
-    ports:
-      - "${API_PORT:-3000}:3000"
+    network_mode: host
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
